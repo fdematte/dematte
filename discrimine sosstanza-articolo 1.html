@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>REACH Article vs Substance/Mixture Determination</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .question-group { margin-bottom: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        .question { margin-bottom: 10px; }
+        .result-area { margin-top: 20px; font-weight: bold; font-size: 1.2em; }
+    </style>
+</head>
+<body>
+
+    <h1>REACH Article vs Substance/Mixture Determination</h1>
+
+    <label for="objectName">Object Name:</label>
+    <input type="text" id="objectName" name="objectName"><br><br>
+
+    <div class="question-group">
+        <h3>Phase 4 Questions</h3>
+        <div class="question">
+            <p><b>Question 4a:</b> Se la sostanza/miscela dovesse essere eliminata o separata dall’oggetto e usata indipendentemente da esso, la sostanza/miscela sarebbe ancora in grado in linea di principio (anche se probabilmente senza convenienza o sofisticazione) di svolgere la funzione definita nella fase 1?</p>
+            <label><input type="radio" name="q4a" value="yes"> Yes</label>
+            <label><input type="radio" name="q4a" value="no"> No</label>
+        </div>
+        <div class="question">
+            <p><b>Question 4b:</b> Secondo la funzione definita nella fase 1, l’oggetto funge principalmente da contenitore o supporto per il rilascio o l’erogazione controllata della sostanza/miscela o dei relativi prodotti di reazione?</p>
+            <label><input type="radio" name="q4b" value="yes"> Yes</label>
+            <label><input type="radio" name="q4b" value="no"> No</label>
+        </div>
+        <div class="question">
+            <p><b>Question 4c:</b> La sostanza/miscela viene consumata (vale a dire esaurita per esempio per via di una modificazione chimica o fisica) o eliminata (vale a dire rilasciata dall’oggetto) durante la fase di utilizzo dell’oggetto, rendendo così l’oggetto non utilizzabile e portando alla fine della sua durata d’uso?</p>
+            <label><input type="radio" name="q4c" value="yes"> Yes</label>
+            <label><input type="radio" name="q4c" value="no"> No</label>
+        </div>
+    </div>
+
+    <div class="question-group">
+        <h3>Phase 5 Questions</h3>
+        <div class="question">
+            <p><b>Question 5a:</b> Se la sostanza/miscela dovesse essere rimossa o separata dall’oggetto, l’oggetto non sarebbe più grado di svolgere la funzione a esso preposta?</p>
+            <label><input type="radio" name="q5a" value="yes"> Yes</label>
+            <label><input type="radio" name="q5a" value="no"> No</label>
+        </div>
+        <div class="question">
+            <p><b>Question 5b:</b> Lo scopo principale dell’oggetto è diverso da quello di liberare la sostanza/miscela o i suoi prodotti di reazione?</p>
+            <label><input type="radio" name="q5b" value="yes"> Yes</label>
+            <label><input type="radio" name="q5b" value="no"> No</label>
+        </div>
+        <div class="question">
+            <p><b>Question 5c:</b> L’oggetto viene normalmente gettato insieme alla sostanza/miscela alla fine della sua durata d’uso, vale a dire al momento dello smaltimento?</p>
+            <label><input type="radio" name="q5c" value="yes"> Yes</label>
+            <label><input type="radio" name="q5c" value="no"> No</label>
+        </div>
+    </div>
+
+    <div class="question-group">
+        <h3>Phase 6 Questions</h3>
+        <div class="question">
+            <p><b>Question 6a:</b> L’oggetto ha altre funzioni oltre a quella di essere ulteriormente lavorato?</p>
+            <label><input type="radio" name="q6a" value="yes"> Yes</label>
+            <label><input type="radio" name="q6a" value="no"> No</label>
+        </div>
+        <div class="question">
+            <p><b>Question 6b:</b> Il venditore immette l’oggetto sul mercato e/o il cliente è prevalentemente interessato ad acquistarlo per la sua forma/superficie/disegno (e in misura minore per la sua composizione chimica)?</p>
+            <label><input type="radio" name="q6b" value="yes"> Yes</label>
+            <label><input type="radio" name="q6b" value="no"> No</label>
+        </div>
+        <div class="question">
+            <p><b>Question 6c:</b> Quando viene ulteriormente lavorato, l’oggetto è sottoposto solo a una "lavorazione leggera", vale a dire senza apportare modifiche significative alla propria forma?</p>
+            <label><input type="radio" name="q6c" value="yes"> Yes</label>
+            <label><input type="radio" name="q6c" value="no"> No</label>
+        </div>
+        <div class="question">
+            <p><b>Question 6d:</b> Quando l’oggetto viene ulteriormente lavorato, la sua composizione chimica rimane uguale?</p>
+            <label><input type="radio" name="q6d" value="yes"> Yes</label>
+            <label><input type="radio" name="q6d" value="no"> No</label>
+        </div>
+    </div>
+
+    <button type="button" onclick="determineType()">Determine Type</button>
+
+    <div class="result-area" id="result"></div>
+
+    <script>
+        function determineType() {
+            const objectName = document.getElementById('objectName').value;
+            let phase4YesCount = 0;
+            let phase5YesCount = 0;
+            let phase6YesCount = 0;
+
+            // Phase 4
+            phase4YesCount += document.querySelector('input[name="q4a"]:checked')?.value === 'yes' ? 1 : 0;
+            phase4YesCount += document.querySelector('input[name="q4b"]:checked')?.value === 'yes' ? 1 : 0;
+            phase4YesCount += document.querySelector('input[name="q4c"]:checked')?.value === 'yes' ? 1 : 0;
+
+            // Phase 5
+            phase5YesCount += document.querySelector('input[name="q5a"]:checked')?.value === 'yes' ? 1 : 0;
+            phase5YesCount += document.querySelector('input[name="q5b"]:checked')?.value === 'yes' ? 1 : 0;
+            phase5YesCount += document.querySelector('input[name="q5c"]:checked')?.value === 'yes' ? 1 : 0;
+
+            // Phase 6
+            phase6YesCount += document.querySelector('input[name="q6a"]:checked')?.value === 'yes' ? 1 : 0;
+            phase6YesCount += document.querySelector('input[name="q6b"]:checked')?.value === 'yes' ? 1 : 0;
+            phase6YesCount += document.querySelector('input[name="q6c"]:checked')?.value === 'yes' ? 1 : 0;
+            phase6YesCount += document.querySelector('input[name="q6d"]:checked')?.value === 'yes' ? 1 : 0;
+
+
+            let resultText = "";
+            if (phase4YesCount >= 2) {
+                resultText = "<b>Result: Combination of Article and Substance/Mixture</b>";
+            } else if (phase5YesCount <= 1 && phase6YesCount >= 2) {
+                resultText = "<b>Result: Article</b>";
+            } else {
+                resultText = "<b>Result: Substance/Mixture</b>";
+            }
+
+            document.getElementById('result').innerHTML = `For object: <b>${objectName}</b><br>${resultText}`;
+        }
+    </script>
+
+</body>
+</html>
