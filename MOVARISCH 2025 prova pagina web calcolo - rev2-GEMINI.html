@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valutazione Rischio Chimico (Modello PMI - Bozza)</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            margin: auto;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        .disclaimer {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        form fieldset {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        form legend {
+            font-weight: bold;
+            padding: 0 10px;
+            color: #555;
+        }
+        form label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        form input[type="text"],
+        form input[type="number"],
+        form select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box; /* Include padding and border in element's total width and height */
+        }
+        form button {
+            background-color: #5cb85c;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            width: 100%;
+            margin-top: 10px;
+        }
+        form button:hover {
+            background-color: #4cae4c;
+        }
+        #results {
+            margin-top: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+        #results h2 {
+            margin-top: 0;
+            color: #007bff;
+        }
+         /* Basic Responsive */
+        @media (max-width: 600px) {
+            body {
+                margin: 10px;
+            }
+            .container {
+                padding: 15px;
+            }
+        }
+        .risk-zone {
+             padding: 10px;
+             border-radius: 5px;
+             color: white;
+             text-align: center;
+             margin: 10px 0;
+             font-size: 1.2em;
+        }
+        .zone-verde { background-color: #28a745; }
+        .zone-arancio { background-color: #fd7e14; }
+        .zone-rosso-base { background-color: #dc3545; } /* 21-40 */
+        .zone-rosso-elevato { background-color: #b22222; } /* 40-80 */
+        .zone-rosso-grave { background-color: #8b0000; } /* > 80 */
+        .generating-options label {
+            font-weight: normal;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Calcolatore Rischio Chimico</h1>
+        <div class="disclaimer">
+            <strong>ATTENZIONE:</strong> Questo strumento fornisce una stima PRELIMINARE e DIMOSTRATIVA basata sul modello regionale (bozza 2025).
+            <span class="error">NON sostituisce la Valutazione dei Rischi ufficiale</span> (D.Lgs. 81/08) che deve essere redatta da personale qualificato. I risultati sono indicativi.
+            Questo calcolo NON si applica ad agenti Cancerogeni/Mutageni/Reprotossici (CMR) 1A/1B.
+        </div>
+
+        <form id="riskForm">
+            <fieldset>
+                <legend>1. Agente Chimico e Pericolo (P)</legend>
+
+                <label for="chemicalName">Nome Agente/Miscela:</label>
+                <input type="text" id="chemicalName" required>
+
+                <label for="hPhrases">Indicazioni di Pericolo (Frasi H) - separate da spazio o virgola:</label>
+                <input type="text" id="hPhrases" placeholder="Es: H315, H332, EUH208">
+                <small>Inserire TUTTE le frasi H pertinenti indicate nella SDS. Escluse CMR 1A/1B (H340, H350, H360...).</small>
+
+                <div>
+                    <label style="display: inline-block; margin-right: 10px;">L'attività genera l'agente?</label>
+                    <input type="checkbox" id="isGeneratingActivity" onchange="toggleGeneratingOptions()"> <label for="isGeneratingActivity" style="font-weight:normal;">Sì (es. saldatura, degradazione termica)</label>
+                </div>
+            </fieldset>
+
+            <fieldset id="inhalationRiskSection">
+                <legend>2. Esposizione Inalatoria (Einal)</legend>
+                 <small>Compilare se l'agente ha pericoli per inalazione o è generato/volatile.</small><br><br>
+
+                <label for="physChemState">Proprietà Chimico-Fisiche / Disponibilità in Aria:</label>
+                <select id="physChemState">
+                    <option value="" disabled selected>Seleziona stato/volatilità...</option>
+                    <option value="solid_low">Solido/Nebbie (Bassa polverosità/dispers.)</option>
+                    <option value="solid_medium">Solido/Nebbie (Media polverosità/dispers.)</option>
+                    <option value="liquid_low">Liquido (Bassa volatilità)</option>
+                    <option value="liquid_medium">Liquido (Media volatilità) o Polveri Fini</option>
+                    <option value="liquid_high">Liquido (Alta volatilità)</option>
+                     <option value="gas">Gassoso</option>
+                </select>
+                <small>Per Liquidi: fare riferimento al grafico/formula (Fig.1 pag.15) in base a Te e To. Qui è richiesta la classificazione diretta.</small>
+
+                <label for="quantity">Quantità in Uso Giornaliera:</label>
+                <select id="quantity">
+                    <option value="" disabled selected>Seleziona quantità...</option>
+                    <option value="1">< 0,1 Kg</option>
+                    <option value="2">0,1 - 1 Kg</option>
+                    <option value="3">1 - 10 Kg</option>
+                    <option value="4">10 - 100 Kg</option>
+                    <option value="5">> 100 Kg</option>
+                </select>
+                <small id="quantityNote">Per agente diretto. Se generato dall'attività, indica quantità materiale di partenza.</small>
+
+                <label for="usageType">Tipologia d'Uso:</label>
+                <select id="usageType">
+                     <option value="" disabled selected>Seleziona tipologia d'uso...</option>
+                    <option value="1">Sistema chiuso</option>
+                    <option value="2">Inclusione in matrice</option>
+                    <option value="3">Uso controllato / non dispersivo</option>
+                    <option value="4">Uso con dispersione significativa</option>
+                </select>
+
+                <div id="standardControlOptions">
+                    <label for="controlType">Tipologia di Controllo:</label>
+                    <select id="controlType">
+                         <option value="" disabled selected>Seleziona tipologia controllo...</option>
+                        <option value="1">Contenimento completo</option>
+                        <option value="2">Aspirazione Locale (LEV)</option>
+                        <option value="3">Segregazione / Separazione</option>
+                        <option value="4">Ventilazione Generale / Diluizione</option>
+                        <option value="5">Manipolazione diretta (solo DPI)</option>
+                    </select>
+                </div>
+                 <div id="generatingControlOptions" style="display: none;" class="generating-options">
+                    <label for="controlTypeGenerating">Tipologia di Controllo (per attività generante):</label>
+                    <select id="controlTypeGenerating">
+                        <option value="" disabled selected>Seleziona tipologia controllo...</option>
+                        <option value="1">Contenimento completo</option> <!-- Basso C=1 -->
+                        <option value="2">Aspirazione Locale (LEV)</option> <!-- Medio C=2 -->
+                        <option value="3">Segregazione / Separazione</option> <!-- Alto C=3 -->
+                        <option value="4">Ventilazione Generale</option>      <!-- Alto C=3 -->
+                     </select>
+                     <small>La matrice 1/bis (pag 27) sembra mappare Contenimento a C=1 (Basso), LEV a C=2 (Medio), Segr./Vent.Gen a C=3 (Alto). "Manipolazione diretta" non è inclusa.</small>
+                </div>
+
+
+                <label for="exposureTime">Tempo di Esposizione Giornaliero (stimato):</label>
+                <select id="exposureTime">
+                    <option value="" disabled selected>Seleziona tempo...</option>
+                    <option value="1">< 15 minuti</option>
+                    <option value="2">15 minuti - 2 ore</option>
+                    <option value="3">2 ore - 4 ore</option>
+                    <option value="4">4 ore - 6 ore</option>
+                    <option value="5">> 6 ore</option>
+                </select>
+
+                <label for="distance">Distanza Lavoratore dalla Sorgente (stimata):</label>
+                 <select id="distance">
+                    <option value="" disabled selected>Seleziona distanza...</option>
+                    <option value="1">< 1 metro</option>
+                    <option value="0.75">1 - < 3 metri</option>
+                    <option value="0.50">3 - < 5 metri</option>
+                    <option value="0.25">5 - 10 metri</option>
+                    <option value="0.1">>= 10 metri</option>
+                </select>
+            </fieldset>
+
+             <fieldset>
+                <legend>3. Esposizione Cutanea (Ecute)</legend>
+                <small>Compilare se l'agente ha pericoli per contatto cutaneo o c'è possibilità di contatto.</small><br><br>
+
+                 <label for="usageTypeCutaneous">Tipologia d'Uso:</label>
+                 <select id="usageTypeCutaneous">
+                     <option value="" disabled selected>Seleziona tipologia d'uso...</option>
+                    <option value="1">Sistema chiuso</option>
+                    <option value="2">Inclusione in matrice</option>
+                    <option value="3">Uso controllato / non dispersivo</option>
+                    <option value="4">Uso con dispersione significativa</option>
+                 </select>
+
+                <label for="contactLevel">Livello di Contatto Cutaneo (stimato):</label>
+                 <select id="contactLevel">
+                     <option value="" disabled selected>Seleziona livello contatto...</option>
+                     <option value="0">Nessun contatto</option>
+                    <option value="1">Contatto accidentale (<1 / giorno)</option>
+                    <option value="2">Contatto discontinuo (2-10 / giorno)</option>
+                    <option value="3">Contatto esteso (>10 / giorno)</option>
+                </select>
+            </fieldset>
+
+            <button type="button" onclick="calculateRisk()">Valuta Rischio</button>
+        </form>
+
+        <div id="results" style="display: none;">
+            <h2>Risultati della Valutazione Preliminare</h2>
+            <p id="resultSummary"></p>
+            <div id="resultZone" class="risk-zone" style="display:none;"></div>
+            <p id="resultDescription"></p>
+            <p><strong>Azioni/Consigli Generali (basati sul modello):</strong></p>
+            <ul id="resultRecommendations"></ul>
+             <p><small><em>Valori Intermedi Calcolati:</em> <span id="intermediateValues"></span></small></p>
+             <p class="error"><strong>Nota Bene:</strong> Questa valutazione NON sostituisce l'analisi completa e formale prevista dalla normativa.</p>
+        </div>
+    </div>
+
+    <script>
+        // --- DATABASE PUNTEGGI P (da Tabella pag 11-12 - Semplificato) ---
+        const pScores = {
+            // Nocivo
+            "H332": 4.50, "H312": 3.00, "H302": 2.00,
+            // Tossico
+            "H331": 6.00, "H311": 4.50, "H301": 2.25,
+            // Letale Cat 2
+            "H330 cat.2": 7.50, "H310 cat.2": 5.50, "H300 cat.2": 2.50,
+             // Letale Cat 1
+            "H330 cat.1": 8.50, "H310 cat.1": 6.50, "H300 cat.1": 3.00, // Pagina 11 dice H300 cat.1 ?
+            // Contatto Acqua/Acidi
+            "EUH029": 3.00, "EUH031": 3.00, "EUH032": 3.50,
+            // Corrosione/Irritazione Cutanea/Oculare
+            "H314 cat.1A": 6.25, "H314 cat.1B": 5.75, "H314 cat.1C": 5.50,
+            "H315": 2.50, "H318": 4.50, "H319": 3.00, "EUH066": 2.50,
+            // Sensibilizzazione Respiratoria
+            "H334 cat.1A": 9.00, "H334 cat.1B": 8.00, // Categoria omessa per 1B nella tabella
+            // Sensibilizzazione Cutanea
+            "H317 cat.1A": 6.00, "H317 cat.1B": 4.50, // Categoria omessa nella tabella
+             // Tossicità Specifica Organi (STOT) - Esposizione Singola
+            "H370": 9.50, "H371": 8.00,
+            // Irritazione Vie Respiratorie / Sonnolenza/Vertigini
+            "H335": 3.25, "H336": 3.50,
+            // Tossicità Specifica Organi (STOT) - Esposizione Ripetuta
+            "H372": 8.00, "H373": 7.00,
+             // Pericolo in caso di Aspirazione
+            "H304": 5.00,
+             // Sospetto CMR (Cat 2)
+            "H341": 8.00, "H351": 8.00, "H361": 8.00, "H361d": 7.50, "H361f": 7.50, "H361fd": 8.00,
+            "H362": 6.00,
+             // Tossicità/Corrosività Oculare/Respiratoria EUH
+            "EUH070": 6.00, "EUH071": 6.50,
+            // Piombo/Cianocrilato/Cromo VI/Isocianati/Epossidici etc (EUH)
+            "EUH201": 6.00, "EUH201A": 6.00, "EUH202": 4.50, "EUH203": 4.50,
+            "EUH204": 7.00, "EUH205": 4.50, "EUH206": 3.00, "EUH207": 8.00, "EUH208": 4.00,
+            // Vapori/Polveri Pericolose durante l'uso
+            "EUH211": 5.50, "EUH212": 5.50,
+            // Interferenti Endocrini
+            "EUH380": 10.00, "EUH381": 8.00
+             // TODO: Aggiungere Punteggi P per Miscele Non Classificate ma con ingredienti specifici (pag 12-13)
+             // TODO: Aggiungere Punteggi P per Sostanze/Miscele generate durante processo (pag 13, 10) - richiede più logica (alta/bassa emissione...)
+        };
+         const cmr1Phrases = ["H340", "H350", "H350i", "H360", "H360F", "H360D", "H360FD", "H360Fd", "H360Df"]; // CMR 1A/1B
+
+
+        function toggleGeneratingOptions() {
+            const isGenerating = document.getElementById('isGeneratingActivity').checked;
+            document.getElementById('standardControlOptions').style.display = isGenerating ? 'none' : 'block';
+            document.getElementById('generatingControlOptions').style.display = isGenerating ? 'block' : 'none';
+            document.getElementById('quantityNote').textContent = isGenerating ?
+                 'Se generato, indica la quantità giornaliera del MATERIALE DI PARTENZA (es. Kg elettrodi, Kg plastica lavorata).' :
+                 'Indica la quantità giornaliera dell\'agente chimico diretto.';
+        }
+
+        function getPScore(hPhrasesString) {
+            if (!hPhrasesString) return { score: 0, error: "Nessuna frase H inserita.", isCMR1: false };
+
+            const phrases = hPhrasesString.toUpperCase().split(/[\s,;]+/).filter(p => p.trim() !== "");
+            let maxScore = 0;
+            let highestPhrase = '';
+            let containsCMR1 = false;
+
+            for (const phrase of phrases) {
+                 if (cmr1Phrases.includes(phrase)) {
+                     containsCMR1 = true;
+                     // Non interrompiamo, cerchiamo comunque il P massimo teorico per altri scopi informativi, ma il rischio numerico non sarà valido
+                 }
+
+                 // Gestione categorie (es. "H330 cat.1" o solo H330)
+                 let score = pScores[phrase];
+                 if (score === undefined) {
+                    // Try removing potential category suffix for lookup
+                     const basePhrase = phrase.split(' ')[0];
+                     score = pScores[basePhrase];
+                 }
+                  // Gestione più precisa: cerca corrispondenza completa "PHRASE cat.X"
+                 if (pScores[phrase]) {
+                     score = pScores[phrase];
+                 } else {
+                      // Tenta ricerca base se non trovata la categoria
+                      const basePhraseOnly = phrase.match(/^[A-Z0-9]+/i);
+                       if(basePhraseOnly && pScores[basePhraseOnly[0]]) {
+                          // Check if there's a more specific entry like H330 cat.1
+                           let foundSpecific = false;
+                           for(const key in pScores) {
+                              if(key.startsWith(basePhraseOnly[0] + " ") && pScores[key] > score) {
+                                // Prefer the more specific (usually higher) category score if available
+                                // This is heuristic - the model doesn't detail how to choose between HXXX and HXXX cat.Y
+                              }
+                          }
+                          if(!foundSpecific && !score) score = pScores[basePhraseOnly[0]];
+                      }
+                  }
+
+
+                 if (score && score > maxScore) {
+                     maxScore = score;
+                     highestPhrase = phrase;
+                 }
+            }
+
+            if (containsCMR1) {
+                return { score: maxScore, error: `Rilevata Frase H per CMR 1A/1B (${phrases.filter(p=>cmr1Phrases.includes(p)).join(', ')}). La valutazione numerica di questo modello NON è applicabile. Valutazione specifica richiesta (Titolo IX Capo II).`, isCMR1: true };
+            }
+
+            if (maxScore === 0) {
+                return { score: 0, error: "Nessuna frase H riconosciuta o con punteggio associato in questa tabella semplificata.", isCMR1: false };
+            }
+
+            return { score: maxScore, error: null, highestPhrase: highestPhrase, isCMR1: false };
+        }
+
+        // Funzione per ottenere il valore da select, gestendo il caso vuoto/non selezionato
+        function getSelectedValue(elementId, isNumber = true) {
+            const select = document.getElementById(elementId);
+             if (!select || select.selectedIndex <= 0) { // index 0 è "Seleziona..."
+                console.warn(`Valore non selezionato per ${elementId}`);
+                return null; // o NaN o un valore che indichi errore
+            }
+            const value = select.value;
+            return isNumber ? parseFloat(value) : value; // Usare parseFloat per 'd'
+        }
+
+        function calculateEinal(stateVal, qtyVal, usageTypeVal, controlTypeValue, timeVal, isGenerating) {
+             // --- MATRICI LOGIC ---
+             // Semplificazioni: Lo stato fisico è già una categoria composita nel dropdown
+             // Valori numerici sono usati direttamente come indice/valore per semplicità
+
+             // Matrice 1: stato fisico/qty -> D (Disponibilità)
+             const D_map = {
+                // qty: 1(<0.1), 2(0.1-1), 3(1-10), 4(10-100), 5(>100)
+                "solid_low":    { 1: 1, 2: 1, 3: 1, 4: 2, 5: 2 }, // Basso, Medio/Basso
+                "solid_medium": { 1: 1, 2: 1, 3: 1, 4: 2, 5: 2 }, // Stessa riga di Bassa polv.? Riassegnamo come da pag.19 (fino 10Kg Basso, poi Medio/Basso)
+                 "liquid_low":   { 1: 1, 2: 2, 3: 3, 4: 3, 5: 4 }, // Basso, Medio/Basso, Medio/Alta, Medio/Alta, Alta
+                 "liquid_medium":{ 1: 2, 2: 3, 3: 3, 4: 4, 5: 4 }, // Medio/Basso, Medio/Alta, Medio/Alta, Alta, Alta
+                 "liquid_high":  { 1: 3, 2: 3, 3: 4, 4: 4, 5: 4 }, // Medio/Alta, Medio/Alta, Alta, Alta, Alta
+                 "gas":          { 1: 3, 2: 4, 3: 4, 4: 4, 5: 4 }  // Medio/Alta, Alta, Alta, Alta, Alta
+                 // Nota: Punteggi D effettivi (pag 19): Basso=1, Medio/Basso=2, Medio/Alta=3, Alta=4
+             };
+
+            let D = null;
+            if (!isGenerating && D_map[stateVal] && D_map[stateVal][qtyVal] !== undefined) {
+                 D = D_map[stateVal][qtyVal];
+             }
+
+             // Matrice 2: D / tipo uso -> U (Uso)
+             const U_map = {
+                // D: 1(Basso), 2(Med/Bas), 3(Med/Alt), 4(Alta)
+                // usageType: 1(Chiuso), 2(Matrice), 3(Controllato), 4(Dispersivo)
+                 1: { 1: 1, 2: 1, 3: 1, 4: 2 }, // Basso -> B, B, B, M
+                 2: { 1: 1, 2: 2, 3: 2, 4: 3 }, // Medio/Basso -> B, M, M, A
+                 3: { 1: 1, 2: 2, 3: 3, 4: 3 }, // Medio/Alta -> B, M, A, A
+                 4: { 1: 2, 2: 3, 3: 3, 4: 3 }  // Alta -> M, A, A, A
+                 // Nota: Punteggi U effettivi (pag 20): Basso=1, Medio=2, Alto=3
+             };
+
+             let U = null;
+            if (!isGenerating && D !== null && U_map[D] && U_map[D][usageTypeVal] !== undefined) {
+                 U = U_map[D][usageTypeVal];
+            }
+
+            // Matrice 3: U / tipo controllo -> C (Compensazione)
+            const C_map = {
+                 // U: 1(Basso), 2(Medio), 3(Alto)
+                // controlType: 1(Contenimento), 2(LEV), 3(Segreg.), 4(Vent.Gen.), 5(Diretta)
+                1: { 1: 1, 2: 1, 3: 1, 4: 2, 5: 2 }, // Basso -> B, B, B, M, M
+                2: { 1: 1, 2: 2, 3: 2, 4: 3, 5: 3 }, // Medio -> B, M, M, A, A
+                3: { 1: 1, 2: 2, 3: 3, 4: 3, 5: 3 }  // Alto  -> B, M, A, A, A
+                // Nota: Punteggi C effettivi (pag 21): Basso=1, Medio=2, Alto=3
+            };
+
+            let C = null;
+            if (!isGenerating && U !== null && C_map[U] && C_map[U][controlTypeValue] !== undefined) {
+                C = C_map[U][controlTypeValue];
+            }
+
+            // Matrice 1/bis: Quantità / Controllo -> C (per attività generanti)
+             const C_generating_map = {
+                // qty: 1(<10Kg -> Basso), 2(10-100Kg -> Basso), 3(>100Kg -> Basso)
+                 // controlTypeGenerating: 1(Cont), 2(LEV), 3(Segr), 4(VentGen)
+                 // Righe (Qty): 1 (<10kg), 2 (10-100kg), 3 (>100kg)
+                 1: { 1: 1, 2: 1, 3: 2, 4: 2 }, // <10Kg -> B, B, M, M (?) La tabella dice solo Medio per >100kg + Vent.Gen o Segr. Forse <10Kg-> C=1 Basso, 10-100Kg C=2 Medio, >100kg C=3 Alto, indip. da controllo? No, pag 27 mappa C1,C2,C3 vs Qty
+                  // Rifacendoci alla tabella pag 27:
+                 // Quantità <10Kg : Cont(B)=1, LEV(B)=1, Segr(B)=1, Vent(M)=2
+                 // Quantità 10-100Kg: Cont(B)=1, LEV(M)=2, Segr(M)=2, Vent(A)=3
+                  // Quantità >100Kg: Cont(B)=1, LEV(M)=2, Segr(A)=3, Vent(A)=3
+
+                  // Riprovo con Qty come chiave primaria e Control come secondaria
+                 1: { 1: 1, 2: 1, 3: 1, 4: 2 }, // Qty < 10Kg (map a indice 1,2,3,4) -> B,B,B,M -> C=1,1,1,2
+                 2: { 1: 1, 2: 2, 3: 2, 4: 3 }, // Qty 10-100Kg (map a indice 1,2,3,4) -> B,M,M,A -> C=1,2,2,3
+                 3: { 1: 1, 2: 2, 3: 3, 4: 3 }, // Qty > 100Kg (map a indice 1,2,3,4) -> B,M,A,A -> C=1,2,3,3
+
+                 // Nota: I valori quantity 1,2,3 vengono dalle select: <0.1=1 ... >100=5
+                 // Mappiamo le select qty alle righe della matrice 1/bis:
+                 // Qty select 1, 2, 3 (<10Kg) -> riga 1
+                 // Qty select 4 (10-100Kg) -> riga 2
+                 // Qty select 5 (>100Kg) -> riga 3
+             };
+             // Map quantity value to matrix row index
+            let qtyRowGenerating = null;
+             if (qtyVal <= 3) qtyRowGenerating = 1;
+             else if (qtyVal === 4) qtyRowGenerating = 2;
+            else if (qtyVal === 5) qtyRowGenerating = 3;
+
+
+             if (isGenerating && qtyRowGenerating !== null && C_generating_map[qtyRowGenerating] && C_generating_map[qtyRowGenerating][controlTypeValue] !== undefined) {
+                  C = C_generating_map[qtyRowGenerating][controlTypeValue];
+             }
+
+             // Matrice 4 (o 2/bis): C / tempo exp -> I (Intensità)
+            const I_map = {
+                 // C: 1(Basso), 2(Medio), 3(Alto)
+                 // time: 1(<15m), 2(15m-2h), 3(2-4h), 4(4-6h), 5(>6h)
+                 1: { 1: 1, 2: 1, 3: 3, 4: 3, 5: 7 }, // C=Basso -> B, B, M/B, M/B, M/A
+                 2: { 1: 1, 2: 3, 3: 7, 4: 7, 5: 10}, // C=Medio -> B, M/B, M/A, M/A, A
+                 3: { 1: 3, 2: 7, 3: 10, 4: 10, 5: 10} // C=Alto  -> M/B, M/A, A, A, A
+                 // Nota: Punteggi I effettivi (pag 22, 28): Basso=1, Medio/Basso=3, Medio/Alta=7, Alta=10
+            };
+
+            let I = null;
+            if (C !== null && I_map[C] && I_map[C][timeVal] !== undefined) {
+                I = I_map[C][timeVal];
+            }
+
+            if (I === null) {
+                console.error("Impossibile calcolare Intensità (I) per via inalatoria.");
+                return null; // O altro valore di errore
+             }
+            console.log(`Calcolo Einal: QtyVal=${qtyVal}, UsageTypeVal=${usageTypeVal}, ControlTypeVal=${controlTypeValue}, TimeVal=${timeVal}, isGen=${isGenerating} -> D=${D}, U=${U}, C=${C} -> I=${I}`);
+            return I;
+        }
+
+        function getDFactor(distanceVal) {
+             return distanceVal; // Il valore è già nel select
+         }
+
+        function calculateEcute(usageTypeValCutaneous, contactLevelVal) {
+            if(contactLevelVal === 0) return 0; // Nessun contatto
+
+             // Matrice Ecute: Uso / Contatto -> Ecute (pag 25)
+             const Ecute_map = {
+                 // usageType: 1(Chiuso), 2(Matrice), 3(Controllato), 4(Dispersivo)
+                 // contactLevel: 1(Accidentale), 2(Discontinuo), 3(Esteso)
+                1: { 1: 1, 2: 3, 3: 7 }, // Chiuso -> B, M, A (E=1,3,7) -> ERRORE tabella p25: B,M,A = 1,3,7
+                 2: { 1: 1, 2: 3, 3: 7 }, // Matrice -> B, M, A -> E=1,3,7
+                 3: { 1: 1, 2: 3, 3: 10 },// Controllato -> B, M, Molto Alto -> E=1,3,10
+                 4: { 1: 3, 2: 7, 3: 10 } // Dispersivo -> M, A, Molto Alto -> E=3,7,10
+                  // Punteggi Ecute effettivi (pag 25): Basso=1, Medio=3, Alto=7, Molto Alto=10
+             };
+
+            let Ecute = null;
+            if (Ecute_map[usageTypeValCutaneous] && Ecute_map[usageTypeValCutaneous][contactLevelVal] !== undefined) {
+                 Ecute = Ecute_map[usageTypeValCutaneous][contactLevelVal];
+            }
+
+            if (Ecute === null) {
+                console.error("Impossibile calcolare Ecute.");
+                 return null; // O altro valore di errore
+             }
+             console.log(`Calcolo Ecute: UsageType=${usageTypeValCutaneous}, ContactLevel=${contactLevelVal} -> Ecute=${Ecute}`);
+            return Ecute;
+        }
+
+        function classifyRisk(R) {
+            let zoneClass = '';
+             let zoneName = 'Non Calcolabile';
+            let description = 'Impossibile determinare la zona di rischio.';
+             let recommendations = ['Verificare i dati inseriti.'];
+
+             if (R === null || isNaN(R)) {
+                 // Keep defaults
+             } else if (R < 0.1) {
+                  zoneClass = 'zone-verde';
+                 zoneName = 'ZONA VERDE (Inferiore alla soglia minima)';
+                 description = 'Il rischio calcolato è inferiore alla soglia minima del modello (0.1). Considerato irrilevante per la salute in base a questo calcolo.';
+                 recommendations = ['Mantenere le buone pratiche lavorative.', 'Consultare comunque il medico competente se previsto.'];
+            } else if (R >= 0.1 && R < 15) {
+                zoneClass = 'zone-verde';
+                zoneName = 'ZONA VERDE';
+                description = 'Rischio irrilevante per la salute (in base a questo modello).';
+                recommendations = ['Consultare comunque il medico competente se previsto.', 'Mantenere le misure preventive e protettive in atto.'];
+            } else if (R >= 15 && R < 21) {
+                zoneClass = 'zone-arancio';
+                zoneName = 'ZONA ARANCIO';
+                description = 'Intervallo di incertezza. Il rischio POTREBBE essere irrilevante per la salute, ma richiede verifica.';
+                 recommendations = [
+                    'Rivedere con scrupolo l\'assegnazione dei punteggi e le ipotesi fatte.',
+                    'Verificare l\'adeguatezza e l\'efficacia delle misure di prevenzione e protezione adottate.',
+                     'Consultare il medico competente per la decisione finale e le indicazioni operative.',
+                     'Considerare misurazioni ambientali se l\'incertezza persiste.'
+                 ];
+             } else if (R >= 21 && R <= 40) {
+                 zoneClass = 'zone-rosso-base';
+                 zoneName = 'ZONA ROSSA (Rischio NON Irrilevante)';
+                 description = 'Rischio superiore al rischio irrilevante per la salute.';
+                 recommendations = [
+                    'Applicare gli articoli 225 (Misure specifiche), 226 (Disposizioni in caso di incidenti), 229 (Sorveglianza sanitaria), 230 (Cartelle sanitarie) del D.Lgs. 81/08.',
+                    'Valutare prioritariamente la sostituzione dell\'agente o del processo.',
+                     'Implementare/Migliorare le misure di controllo collettivo (ciclo chiuso, aspirazione locale).',
+                     'Utilizzare DPI adeguati.',
+                     'Garantire formazione e informazione specifiche.'
+                 ];
+             } else if (R > 40 && R <= 80) {
+                 zoneClass = 'zone-rosso-elevato';
+                zoneName = 'ZONA ROSSA (Rischio Elevato)';
+                 description = 'Zona di rischio elevato.';
+                 recommendations = [
+                     'Applicare rigorosamente artt. 225, 226, 229, 230 D.Lgs. 81/08.',
+                    'Implementare azioni correttive urgenti.',
+                     'Considerare fermo attività o limitazioni operative fino alla riduzione del rischio.',
+                     'Valutare sostituzione agente/processo come massima priorità.',
+                     'Potenziare misure di controllo collettivo e individuale.',
+                     'Aumentare frequenza sorveglianza sanitaria e controlli.',
+                    'Considerare misurazioni ambientali e biologiche.'
+                 ];
+             } else { // R > 80
+                 zoneClass = 'zone-rosso-grave';
+                 zoneName = 'ZONA ROSSA (Rischio Grave)';
+                description = 'Zona di grave rischio.';
+                recommendations = [
+                    'Agire immediatamente per ridurre l\'esposizione. Riconsiderare totalmente il processo/uso dell\'agente.',
+                    'Massima priorità alla sostituzione.',
+                    'Applicazione imperativa e rafforzata degli artt. 225, 226, 229, 230 D.Lgs. 81/08.',
+                    'Necessarie misure di controllo collettivo ad altissima efficacia (contenimento).',
+                    'Utilizzo dei DPI più protettivi disponibili.',
+                    'Intensificare al massimo sorveglianza sanitaria, misurazioni ambientali/biologiche, controlli procedurali e manutenzione.'
+                ];
+            }
+
+            return { zoneClass, zoneName, description, recommendations };
+        }
+
+
+        // --- MAIN CALCULATION FUNCTION ---
+        function calculateRisk() {
+            console.clear(); // Pulisce la console per ogni nuovo calcolo
+             // Reset results
+            const resultsDiv = document.getElementById('results');
+             const summaryP = document.getElementById('resultSummary');
+             const zoneDiv = document.getElementById('resultZone');
+             const descP = document.getElementById('resultDescription');
+            const recList = document.getElementById('resultRecommendations');
+            const intermValuesSpan = document.getElementById('intermediateValues');
+            resultsDiv.style.display = 'none';
+            zoneDiv.style.display = 'none';
+             summaryP.textContent = '';
+             descP.textContent = '';
+             recList.innerHTML = '';
+            intermValuesSpan.textContent = '';
+
+
+            // --- 1. Get Peril (P) ---
+            const hPhrasesString = document.getElementById('hPhrases').value;
+             const { score: P, error: pError, isCMR1 } = getPScore(hPhrasesString);
+
+            summaryP.innerHTML = `Agente: ${document.getElementById('chemicalName').value || 'Non specificato'}<br>`;
+
+            if (isCMR1 || P === 0 && pError) {
+                 summaryP.innerHTML += `<span class="error">Errore Pericolo (P): ${pError}</span>`;
+                 resultsDiv.style.display = 'block';
+                 return;
+             }
+             summaryP.innerHTML += `Punteggio Pericolo (P) Massimo Rilevato: <strong>${P.toFixed(2)}</strong><br>`;
+
+
+             // --- 2. Get Input Values for Exposure ---
+             const isGenerating = document.getElementById('isGeneratingActivity').checked;
+             // Inhalation
+             const stateVal = getSelectedValue('physChemState', false);
+             const qtyVal = getSelectedValue('quantity');
+             const usageTypeVal = getSelectedValue('usageType');
+             const controlTypeVal = getSelectedValue(isGenerating ? 'controlTypeGenerating' : 'controlType');
+             const timeVal = getSelectedValue('exposureTime');
+             const distanceVal = getSelectedValue('distance', true); // 'd' può essere float
+             // Cutaneous
+             const usageTypeValCutaneous = getSelectedValue('usageTypeCutaneous');
+            const contactLevelVal = getSelectedValue('contactLevel');
+
+
+            let I = null;
+            let Einal = null;
+             let Rinal = null;
+             let Ecute = null;
+            let Rcute = null;
+            let R_final = null;
+             let d = null;
+             let intermediateText = `P=${P.toFixed(2)}; `;
+
+            // --- 3. Calculate Einal & Rinal (if relevant inputs exist) ---
+            // Verifica base se i campi inalatori principali sono stati compilati
+             const inhalationInputsProvided = stateVal && qtyVal && usageTypeVal && controlTypeVal && timeVal && distanceVal;
+             if(inhalationInputsProvided) {
+                I = calculateEinal(stateVal, qtyVal, usageTypeVal, controlTypeVal, timeVal, isGenerating);
+                 d = getDFactor(distanceVal);
+
+                 if (I !== null && d !== null) {
+                     Einal = I * d;
+                     // Clamp Rinal base (da pag.3: 0.1 <= Rinal <= 100 ?) - il 100 non è chiaro, ma lo 0.1 sì.
+                     Rinal = Math.max(0.1, P * Einal); // Assicuriamo minimo 0.1
+                     intermediateText += `I=${I}; d=${d.toFixed(2)}; Einal=${Einal.toFixed(2)}; Rinal=${Rinal.toFixed(2)}; `;
+                    summaryP.innerHTML += `Rischio Inalatorio Calcolato (Rinal = P x I x d): <strong>${Rinal.toFixed(2)}</strong><br>`;
+                 } else {
+                     summaryP.innerHTML += `<span class="error">Errore: Impossibile calcolare il rischio inalatorio (I o d mancanti).</span><br>`;
+                      intermediateText += `I=N/A; d=N/A; Einal=N/A; Rinal=N/A; `;
+                 }
+            } else {
+                summaryP.innerHTML += `Dati per il rischio inalatorio non completi/forniti.<br>`;
+                intermediateText += `I=N/A; d=N/A; Einal=N/A; Rinal=N/A; `;
+            }
+
+
+             // --- 4. Calculate Ecute & Rcute (if relevant inputs exist) ---
+            // Verifica base se i campi cutanei principali sono stati compilati
+            const cutaneousInputsProvided = usageTypeValCutaneous && contactLevelVal !== null; // contactLevel 0 è valido
+             if(cutaneousInputsProvided) {
+                 if (contactLevelVal === 0) {
+                     Ecute = 0;
+                     Rcute = 0;
+                    summaryP.innerHTML += `Contatto cutaneo assente (Ecute = 0).<br>`;
+                    intermediateText += `Ecute=0; Rcute=0; `;
+                 } else {
+                     Ecute = calculateEcute(usageTypeValCutaneous, contactLevelVal);
+                     if (Ecute !== null) {
+                          // Clamp Rcute base (da pag.3: 1 <= Rcute <= 100 ?) - il 100 non è chiaro, ma l'1 sì
+                         Rcute = Math.max(1, P * Ecute); // Assicuriamo minimo 1 se c'è contatto
+                        summaryP.innerHTML += `Rischio Cutaneo Calcolato (Rcute = P x Ecute): <strong>${Rcute.toFixed(2)}</strong><br>`;
+                         intermediateText += `Ecute=${Ecute}; Rcute=${Rcute.toFixed(2)}; `;
+                     } else {
+                         summaryP.innerHTML += `<span class="error">Errore: Impossibile calcolare il rischio cutaneo.</span><br>`;
+                         intermediateText += `Ecute=N/A; Rcute=N/A; `;
+                    }
+                 }
+             } else {
+                summaryP.innerHTML += `Dati per il rischio cutaneo non completi/forniti.<br>`;
+                intermediateText += `Ecute=N/A; Rcute=N/A; `;
+            }
+
+
+             // --- 5. Determine Final Risk (R) ---
+            if (Rinal !== null && Rcute !== null) {
+                 // Rcum = sqrt(Rinal^2 + Rcute^2)
+                 R_final = Math.sqrt(Math.pow(Rinal, 2) + Math.pow(Rcute, 2));
+                 summaryP.innerHTML += `Rischio Combinato Calcolato (Rcum = sqrt(Rinal² + Rcute²)): <strong>${R_final.toFixed(2)}</strong>`;
+            } else if (Rinal !== null) {
+                 R_final = Rinal;
+                 summaryP.innerHTML += `Rischio Finale (R = Rinal): <strong>${R_final.toFixed(2)}</strong>`;
+            } else if (Rcute !== null) {
+                R_final = Rcute;
+                summaryP.innerHTML += `Rischio Finale (R = Rcute): <strong>${R_final.toFixed(2)}</strong>`;
+            } else {
+                 summaryP.innerHTML += `<span class="error">Nessun rischio calcolabile con i dati forniti.</span>`;
+                R_final = null; // Ensure it's null if neither is calculated
+            }
+             intermediateText += `R_finale=${R_final !== null ? R_final.toFixed(2) : 'N/A'}`;
+             intermValuesSpan.textContent = intermediateText;
+
+
+            // --- 6. Classify and Display ---
+            if (R_final !== null) {
+                const { zoneClass, zoneName, description, recommendations } = classifyRisk(R_final);
+                zoneDiv.className = 'risk-zone ' + zoneClass;
+                 zoneDiv.textContent = zoneName;
+                zoneDiv.style.display = 'block';
+                descP.textContent = description;
+                 recommendations.forEach(rec => {
+                    const li = document.createElement('li');
+                     li.textContent = rec;
+                     recList.appendChild(li);
+                 });
+             }
+
+            resultsDiv.style.display = 'block';
+            // Scroll to results smoothly
+            resultsDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+
+         // Initialize the generating options display
+        window.onload = toggleGeneratingOptions;
+
+    </script>
+
+</body>
+</html>
